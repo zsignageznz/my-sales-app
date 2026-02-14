@@ -1,95 +1,57 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import os
+from datetime import datetime
 
-# --- FILE NAMES ---
-# Change this to match the filename you uploaded to GitHub exactly
-INV_FILE = "inventory.csv" 
+# Exact filenames on GitHub
+INV_FILE = "inventory.csv"
 SALES_FILE = "sales_log.csv"
 
 st.set_page_config(page_title="Sales Tracker", layout="centered")
 
-# --- DATA LOADING ---
 def load_data():
     if os.path.exists(INV_FILE):
         return pd.read_csv(INV_FILE)
-    else:
-        st.error(f"File {INV_FILE} not found! Please upload it to GitHub.")
-        return pd.DataFrame()
+    return pd.DataFrame()
 
-df_inv = load_data()
+st.title("📦 Sales Recorder")
 
-# --- APP UI ---
-st.title("🛒 Sales Recording System")
+df = load_data()
 
-if not df_inv.empty:
-    with st.form("sale_form", clear_on_submit=True):
-        # 1. Select Item (Description)
-        item_choice = st.selectbox("Select Item", df_inv['Description'].unique())
+if df.empty:
+    st.error(f"Waiting for {INV_FILE}. Please ensure it is uploaded to GitHub.")
+else:
+    with st.form("sale_form"):
+        desc = st.selectbox("Description", df['Description'].unique())
+        sub_df = df[df['Description'] == desc]
         
-        # 2. Filter for Color/Finish
-        filtered_colors = df_inv[df_inv['Description'] == item_choice]
-        color_choice = st.selectbox("Color/Finish", filtered_colors['Color/Finish'].unique())
+        col_fin = st.selectbox("Color/Finish", sub_df['Color/Finish'].unique())
+        thick = st.selectbox("Thickness", sub_df[sub_df['Color/Finish'] == col_fin]['Thickness'].unique())
         
-        # 3. Filter for Thickness
-        filtered_thickness = filtered_colors[filtered_colors['Color/Finish'] == color_choice]
-        thick_choice = st.selectbox("Thickness", filtered_thickness['Thickness'].unique())
+        row = sub_df[(sub_df['Color/Finish'] == col_fin) & (sub_df['Thickness'] == thick)].iloc[0]
         
-        # Get the specific row to check stock
-        target_row = filtered_thickness[filtered_thickness['Thickness'] == thick_choice].iloc[0]
-        max_stock = int(target_row['Quantity (PC)'])
-        size_info = target_row['Size (mm)']
-        default_price = float(target_row['TZS'])
-
-        st.info(f"Size: {size_info} | Current Stock: {max_stock} units")
-
-        # 4. Inputs
-        col1, col2 = st.columns(2)
-        qty = col1.number_input("Quantity Sold", min_value=1, max_value=max_stock if max_stock > 0 else 1)
-        price = col2.number_input("Price (TZS)", min_value=0.0, value=default_price)
+        st.write(f"Available: {row['Quantity (PC)']} | Price: {row['TZS']} TZS")
         
-        submitted = st.form_submit_button("Confirm Sale")
-
-    if submitted:
-        if max_stock >= qty:
-            # Calculate remaining
-            remaining = max_stock - qty
-            
-            # Update the inventory dataframe
-            idx = df_inv[(df_inv['Description'] == item_choice) & 
-                        (df_inv['Color/Finish'] == color_choice) & 
-                        (df_inv['Thickness'] == thick_choice)].index
-            df_inv.at[idx[0], 'Quantity (PC)'] = remaining
-            
-            # Save updated inventory back to CSV
-            df_inv.to_csv(INV_FILE, index=False)
-            
-            # Record sale in sales_log.csv
-            new_sale = {
-                "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Item": item_choice,
-                "Color": color_choice,
-                "Thickness": thick_choice,
-                "Qty Sold": qty,
-                "Total Price": price * qty,
-                "Stock Left": remaining
-            }
-            
-            # Append sale to log
-            if os.path.exists(SALES_FILE):
-                sales_df = pd.read_csv(SALES_FILE)
-                sales_df = pd.concat([sales_df, pd.DataFrame([new_sale])], ignore_index=True)
-            else:
-                sales_df = pd.DataFrame([new_sale])
-            
-            sales_df.to_csv(SALES_FILE, index=False)
-            
-            st.success(f"Sale Recorded! {remaining} left in stock.")
-            st.rerun()
+        qty = st.number_input("Qty Sold", min_value=1, max_value=int(row['Quantity (PC)']))
+        price = st.number_input("Sold at Price", value=float(row['TZS']))
+        
+        submit = st.form_submit_button("Record Sale")
+        
+    if submit:
+        # Update Stock
+        idx = df[(df['Description'] == desc) & (df['Color/Finish'] == col_fin) & (df['Thickness'] == thick)].index
+        df.at[idx[0], 'Quantity (PC)'] -= qty
+        df.to_csv(INV_FILE, index=False)
+        
+        # Log Sale
+        log_entry = pd.DataFrame([{
+            "Time": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Item": desc, "Qty": qty, "Price": price
+        }])
+        if os.path.exists(SALES_FILE):
+            log_entry.to_csv(SALES_FILE, mode='a', header=False, index=False)
         else:
-            st.error("Error: Not enough stock available!")
-
-st.divider()
-st.subheader("Inventory Preview")
-st.dataframe(df_inv)
+            log_entry.to_csv(SALES_FILE, index=False)
+            
+        st.success("Sale Saved!")
+        st.rerun()
