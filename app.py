@@ -8,100 +8,99 @@ st.set_page_config(page_title="Sales Tracker", layout="centered")
 # 1. Establish Connection
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# 2. Configuration - PASTE YOUR URL BELOW
+# 2. Configuration - Ensure this URL is correct
 SHEET_URL = "https://docs.google.com/spreadsheets/d/10Nr9KnYkgNehghtozXd4uQ5T-D7lxjkTh_T2mXj_Xlc/edit?usp=sharing/edit#gid=0"
 
-def load_and_clean_data():
+def load_data():
     # Read the Inventory tab
     data = conn.read(spreadsheet=SHEET_URL, worksheet="Inventory", ttl=0)
     
-    # Remove hidden spaces from text columns
-    for col in ['Description', 'Color/Finish', 'Thickness']:
-        if col in data.columns:
+    # DEBUG: Print columns to the app so we can see what Google is sending
+    # st.write("Columns found:", list(data.columns)) 
+    
+    # Standardize Column Names (Removes spaces and converts to lowercase for matching)
+    data.columns = [c.strip() for c in data.columns]
+    
+    # Clean up data rows
+    for col in data.columns:
+        if data[col].dtype == 'object':
             data[col] = data[col].astype(str).str.strip()
-    
-    # Ensure math columns are numbers
-    if 'Quantity (PC)' in data.columns:
-        data['Quantity (PC)'] = pd.to_numeric(data['Quantity (PC)'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-    if 'TZS' in data.columns:
-        data['TZS'] = pd.to_numeric(data['TZS'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-    
+            
     return data
 
 st.title("📦 Sales Recorder")
 
 try:
-    df = load_and_clean_data()
+    df = load_data()
 
-    # --- SELECTION AREA ---
-    st.subheader("1. Identify Item")
-    
-    # Dropdown 1: Description
-    all_items = sorted(df['Description'].unique())
-    selected_desc = st.selectbox("Select Item Description", all_items)
-    
-    # Filter for Color
-    sub_df = df[df['Description'] == selected_desc]
-    available_colors = sorted(sub_df['Color/Finish'].unique())
-    selected_color = st.selectbox("Select Color/Finish", available_colors)
-    
-    # Filter for Thickness
-    color_df = sub_df[sub_df['Color/Finish'] == selected_color]
-    available_thick = sorted(color_df['Thickness'].unique())
-    selected_thick = st.selectbox("Select Thickness", available_thick)
-    
-    # Final Row Match
-    match = color_df[color_df['Thickness'] == selected_thick]
-    
-    if not match.empty:
-        row = match.iloc[0]
-        current_stock = int(row['Quantity (PC)'])
-        base_price = float(row['TZS'])
+    # CHECK: If dataframe is empty, stop here
+    if df.empty:
+        st.warning("The Inventory sheet is empty. Please add data to Google Sheets.")
+    else:
+        # --- SELECTION AREA ---
+        # Using index 0 as a safety if name is slightly different
+        desc_col = 'Description' 
+        color_col = 'Color/Finish'
+        thick_col = 'Thickness'
+        qty_col = 'Quantity (PC)'
+        price_col = 'TZS'
+
+        # Dropdown 1: Description
+        items = sorted(df[desc_col].unique())
+        selected_desc = st.selectbox("1. Select Item", items, key="desc_select")
         
-        # Display Item Info
-        st.info(f"📏 **Size:** {row['Size (mm)']} | 📈 **In Stock:** {current_stock} | 💰 **Base Price:** {base_price:,.0f} TZS")
+        # Filter for Color
+        sub_df = df[df[desc_col] == selected_desc]
+        colors = sorted(sub_df[color_col].unique())
+        selected_color = st.selectbox("2. Select Color/Finish", colors, key="color_select")
+        
+        # Filter for Thickness
+        color_df = sub_df[sub_df[color_col] == selected_color]
+        thicks = sorted(color_df[thick_col].unique())
+        selected_thick = st.selectbox("3. Select Thickness", thicks, key="thick_select")
+        
+        # Final Row Match
+        match = color_df[color_df[thick_col] == selected_thick]
+        
+        if not match.empty:
+            row = match.iloc[0]
+            
+            # Convert values safely
+            raw_stock = str(row[qty_col]).replace(',', '')
+            current_stock = int(float(raw_stock))
+            
+            raw_price = str(row[price_col]).replace(',', '')
+            base_price = float(raw_price)
+            
+            # Display Info
+            st.info(f"📈 **Stock:** {current_stock} | 💰 **Price:** {base_price:,.0f} TZS")
 
-        # --- TRANSACTION AREA ---
-        st.subheader("2. Record Sale")
-        col1, col2 = st.columns(2)
-        qty_sold = col1.number_input("Quantity Sold", min_value=1, max_value=max(1, current_stock), value=1)
-        price_sold = col2.number_input("Actual Selling Price (Per PC)", value=base_price)
+            # --- TRANSACTION ---
+            col1, col2 = st.columns(2)
+            qty_sold = col1.number_input("Qty Sold", min_value=1, max_value=max(1, current_stock), value=1)
+            price_sold = col2.number_input("Final Price", value=base_price)
 
-        if st.button("Confirm Sale & Update Google Sheet ✅", use_container_width=True):
-            if current_stock >= qty_sold:
-                # Update local Inventory dataframe
+            if st.button("Confirm Sale ✅", use_container_width=True):
+                # Update logic
                 idx = match.index[0]
-                df.at[idx, 'Quantity (PC)'] -= qty_sold
+                df.at[idx, qty_col] = current_stock - qty_sold
                 
-                # Push Inventory update to Google Sheets
+                # Update Inventory
                 conn.update(spreadsheet=SHEET_URL, worksheet="Inventory", data=df)
                 
-                # Create Sales Log Entry
+                # Log to Sales
                 new_sale = pd.DataFrame([{
                     "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "Item": selected_desc,
-                    "Color": selected_color,
-                    "Thickness": selected_thick,
-                    "Qty": qty_sold,
-                    "Price": price_sold,
-                    "Total": qty_sold * price_sold,
-                    "Remaining_Stock": df.at[idx, 'Quantity (PC)']
+                    "Item": selected_desc, "Color": selected_color, "Qty": qty_sold, "Total": qty_sold * price_sold
                 }])
                 
-                # Append to Sales tab
-                sales_history = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
-                updated_sales = pd.concat([sales_history, new_sale], ignore_index=True)
+                sales_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
+                updated_sales = pd.concat([sales_df, new_sale], ignore_index=True)
                 conn.update(spreadsheet=SHEET_URL, worksheet="Sales", data=updated_sales)
                 
-                st.success(f"Successfully recorded! {df.at[idx, 'Quantity (PC)']} items remaining.")
+                st.success("Sale Recorded!")
                 st.rerun()
-            else:
-                st.error("Insufficient stock to complete this sale.")
 
 except Exception as e:
-    st.error("There was an issue processing the data.")
-    st.write("Error details:", e)
-
-st.divider()
-st.subheader("Current Inventory Status")
-st.dataframe(df[['Description', 'Color/Finish', 'Thickness', 'Quantity (PC)', 'TZS']], use_container_width=True)
+    st.error("Dropdowns failed to load.")
+    st.write("Error Detail:", e)
