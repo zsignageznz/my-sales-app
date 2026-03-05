@@ -2,59 +2,39 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
-st.write("Does app see password secret?:", "password" in st.secrets)
-# --- 1. PAGE CONFIGURATION ---
+
 st.set_page_config(page_title="Sales Tracker", layout="centered")
 
-# --- 2. PASSWORD PROTECTION LOGIC ---
+# --- 1. THE LOCK ---
 def check_password():
-    """Returns True if the user had the correct password."""
-    def password_entered():
-        """Checks whether a password entered by the user is correct."""
-        # This pulls the 'password' value from your Streamlit Cloud Secrets
-        if st.session_state["password"] == st.secrets["password"]:
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Clean up sensitive data
-        else:
-            st.session_state["password_correct"] = False
-
     if "password_correct" not in st.session_state:
-        # First run: Show the login input
-        st.title("🔒 Private Access")
-        st.text_input(
-            "Enter Password to Access Sales Tracker", 
-            type="password", 
-            on_change=password_entered, 
-            key="password"
-        )
-        return False
-    elif not st.session_state["password_correct"]:
-        # Wrong password: Show error and re-render input
-        st.title("🔒 Private Access")
-        st.text_input(
-            "Enter Password to Access Sales Tracker", 
-            type="password", 
-            on_change=password_entered, 
-            key="password"
-        )
-        st.error("😕 Incorrect Password. Access Denied.")
-        return False
-    else:
-        # Password is correct
+        st.session_state["password_correct"] = False
+
+    if st.session_state["password_correct"]:
         return True
 
-# --- 3. MAIN APP CONTENT ---
-if check_password():
-    # Only if authenticated, show the rest of the app
-    conn = st.connection("gsheets", type=GSheetsConnection)
+    st.title("🔒 Access Required")
+    pwd_input = st.text_input("Enter Password", type="password")
     
-    # IMPORTANT: Ensure SHEET_URL is also in your Secrets or replace the placeholder below
-    SHEET_URL = st.secrets["gsheet_url"]
+    if st.button("Login"):
+        if pwd_input == st.secrets["password"]:
+            st.session_state["password_correct"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password")
+    
+    return False
 
-    def load_data():
-        data = conn.read(spreadsheet=SHEET_URL, worksheet="Inventory", ttl=0)
-        data.columns = [str(c).strip() for c in data.columns]
-        return data
+# --- 2. THE GATEKEEPER ---
+if not check_password():
+    st.stop()  # <--- THIS STOPS THE REST OF THE SCRIPT FROM RUNNING
+
+# --- 3. THE ACTUAL APP (Only runs if password is correct) ---
+conn = st.connection("gsheets", type=GSheetsConnection)
+SHEET_URL = st.secrets["gsheet_url"] # Using your secret URL
+
+st.title("📦 Sales Recorder")
+# ... rest of your code ...
 
     st.title("📦 Sales Recorder")
 
