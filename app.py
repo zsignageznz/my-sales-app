@@ -49,7 +49,7 @@ if check_password():
     conn = st.connection("gsheets", type=GSheetsConnection)
     
     # IMPORTANT: Ensure SHEET_URL is also in your Secrets or replace the placeholder below
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/10Nr9KnYkgNehghtozXd4uQ5T-D7lxjkTh_T2mXj_Xlc/edit?gid=0#gid=0" 
+    SHEET_URL = st.secrets["gsheet_url"]
 
     def load_data():
         data = conn.read(spreadsheet=SHEET_URL, worksheet="Inventory", ttl=0)
