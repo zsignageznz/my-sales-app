@@ -3,47 +3,53 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
 
-# --- CONFIGURATION ---
+# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(page_title="Sales Tracker", layout="centered")
 
-# --- PASSWORD PROTECTION ---
+# --- 2. PASSWORD PROTECTION LOGIC ---
 def check_password():
     """Returns True if the user had the correct password."""
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if st.session_state["password"] == "your_secret_password": # <-- ZSINGS@2026
+        # This pulls the 'password' value from your Streamlit Cloud Secrets
+        if st.session_state["password"] == st.secrets["password"]:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store password
+            del st.session_state["password"]  # Clean up sensitive data
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First run, show input for password.
+        # First run: Show the login input
+        st.title("🔒 Private Access")
         st.text_input(
-            "Please enter your password to access the Sales Tracker", 
+            "Enter Password to Access Sales Tracker", 
             type="password", 
             on_change=password_entered, 
             key="password"
         )
         return False
     elif not st.session_state["password_correct"]:
-        # Password incorrect, show input + error.
+        # Wrong password: Show error and re-render input
+        st.title("🔒 Private Access")
         st.text_input(
-            "Password incorrect. Try again:", 
+            "Enter Password to Access Sales Tracker", 
             type="password", 
             on_change=password_entered, 
             key="password"
         )
-        st.error("😕 Access Denied")
+        st.error("😕 Incorrect Password. Access Denied.")
         return False
     else:
-        # Password correct.
+        # Password is correct
         return True
 
+# --- 3. MAIN APP CONTENT ---
 if check_password():
-    # --- APP START ---
+    # Only if authenticated, show the rest of the app
     conn = st.connection("gsheets", type=GSheetsConnection)
-    SHEET_URL = "https://docs.google.com/spreadsheets/d/10Nr9KnYkgNehghtozXd4uQ5T-D7lxjkTh_T2mXj_Xlc/edit?gid=0#gid=0"
+    
+    # IMPORTANT: Ensure SHEET_URL is also in your Secrets or replace the placeholder below
+    SHEET_URL = "https://docs.google.com/spreadsheets/d/10Nr9KnYkgNehghtozXd4uQ5T-D7lxjkTh_T2mXj_Xlc/edit?gid=0#gid=0" 
 
     def load_data():
         data = conn.read(spreadsheet=SHEET_URL, worksheet="Inventory", ttl=0)
@@ -57,7 +63,7 @@ if check_password():
 
         if df.empty or len(df) == 0:
             st.warning("📋 Your Inventory sheet is ready, but it has no items yet.")
-            st.info("Please add your stock items to the Google Sheet (starting from Row 2) and refresh.")
+            st.info("Please add items to your Google Sheet and refresh.")
         else:
             # --- SELECTION AREA ---
             items = sorted(df['Description'].unique())
