@@ -1,3 +1,4 @@
+st.write("Does app see password secret?:", "password" in st.secrets)
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
