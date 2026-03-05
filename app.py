@@ -1,9 +1,8 @@
-st.write("Does app see password secret?:", "password" in st.secrets)
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
-
+st.write("Does app see password secret?:", "password" in st.secrets)
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(page_title="Sales Tracker", layout="centered")
 
