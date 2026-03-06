@@ -35,7 +35,6 @@ SHEET_URL = st.secrets["gsheet_url"] # Using your secret URL
 
 st.title("📦 Sales Recorder")
 # ... rest of your code ...
-
 st.title("📦 Sales Recorder")
 
     try:
