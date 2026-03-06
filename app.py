@@ -37,8 +37,8 @@ st.title("📦 Sales Recorder")
 # ... rest of your code ...
 st.title("📦 Sales Recorder")
 
-    try:
-        df = load_data()
+try:
+    df = load_data()
 
         if df.empty or len(df) == 0:
             st.warning("📋 Your Inventory sheet is ready, but it has no items yet.")
