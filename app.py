@@ -27,7 +27,7 @@ def check_password():
 
 # --- 2. THE GATEKEEPER ---
 if not check_password():
-    st.stop()  # <--- THIS STOPS THE REST OF THE SCRIPT FROM RUNNING
+st.stop()  # <--- THIS STOPS THE REST OF THE SCRIPT FROM RUNNING
 
 # --- 3. THE ACTUAL APP (Only runs if password is correct) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -36,7 +36,7 @@ SHEET_URL = st.secrets["gsheet_url"] # Using your secret URL
 st.title("📦 Sales Recorder")
 # ... rest of your code ...
 
-    st.title("📦 Sales Recorder")
+st.title("📦 Sales Recorder")
 
     try:
         df = load_data()
