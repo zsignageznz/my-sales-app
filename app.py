@@ -30,7 +30,7 @@ if not check_password():
 
 # --- 3. MAIN APP CONTENT ---
 conn = st.connection("gsheets", type=GSheetsConnection)
-SHEET_URL = st.secrets["gsheet_url"]
+SHEET_URL ="https://docs.google.com/spreadsheets/d/10Nr9KnYkgNehghtozXd4uQ5T-D7lxjkTh_T2mXj_Xlc/edit?gid=0#gid=0"
 
 def load_data():
     data = conn.read(spreadsheet=SHEET_URL, worksheet="Inventory", ttl=0)
