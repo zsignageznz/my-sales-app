@@ -18,7 +18,7 @@ def check_password():
     pwd_input = st.text_input("Enter Password", type="password")
     
     if st.button("Login"):
-        if pwd_input == st.secrets["password"]:
+        if pwd_input == "zsigns2030":
             st.session_state["password_correct"] = True
             st.rerun()
         else:
