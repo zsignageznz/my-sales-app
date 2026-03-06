@@ -40,7 +40,7 @@ st.title("📦 Sales Recorder")
 try:
     df = load_data()
 
-        if df.empty or len(df) == 0:
+if df.empty or len(df) == 0:
             st.warning("📋 Your Inventory sheet is ready, but it has no items yet.")
             st.info("Please add items to your Google Sheet and refresh.")
         else:
@@ -58,7 +58,7 @@ try:
             
             match = thick_df[thick_df['Thickness'] == selected_thick]
             
-            if not match.empty:
+if not match.empty:
                 row = match.iloc[0]
                 stock = int(pd.to_numeric(str(row['Quantity (PC)']).replace(',', ''), errors='coerce') or 0)
                 base_price = float(pd.to_numeric(str(row['TZS']).replace(',', ''), errors='coerce') or 0)
@@ -79,32 +79,31 @@ try:
                 total_sale = qty_sold * actual_price
                 st.info(f"💰 **Total Sale Amount: {total_sale:,.0f} TZS**")
                 
-                if st.button("Confirm Sale & Sync ✅", use_container_width=True):
+if st.button("Confirm Sale & Sync ✅", use_container_width=True):
                     # 1. Update Inventory Worksheet
                     idx = match.index[0]
                     df.at[idx, 'Quantity (PC)'] = stock - qty_sold
                     conn.update(spreadsheet=SHEET_URL, worksheet="Inventory", data=df)
                     
-                    # 2. Log to Sales Worksheet
-                    try:
-                        sales_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
-                        new_row = pd.DataFrame([{
-                            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            "Item": selected_desc,
-                            "Color": selected_color,
-                            "Thickness": selected_thick,
-                            "Qty Sold": qty_sold,
-                            "Price Each": actual_price,
-                            "Total Amount": total_sale,
-                            "Stock Left": stock - qty_sold
-                        }])
-                        updated_sales = pd.concat([sales_df, new_row], ignore_index=True)
-                        conn.update(spreadsheet=SHEET_URL, worksheet="Sales", data=updated_sales)
-                        st.success("Inventory updated and Sale logged!")
-                    except Exception as e:
-                        st.warning("Inventory updated, but could not write to 'Sales' tab.")
-                    
-                    st.rerun()
+# 2. Log to Sales Worksheet
+try:
+sales_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
+new_row = pd.DataFrame([{
+"Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+"Item": selected_desc,
+"Color": selected_color,
+"Thickness": selected_thick,
+"Qty Sold": qty_sold,
+"Price Each": actual_price,
+"Total Amount": total_sale,
+"Stock Left": stock - qty_sold
+}])
+updated_sales = pd.concat([sales_df, new_row], ignore_index=True)
+conn.update(spreadsheet=SHEET_URL, worksheet="Sales", data=updated_sales)
+st.success("Inventory updated and Sale logged!")
+except Exception as e:
+st.warning("Inventory updated, but could not write to 'Sales' tab.")
+st.rerun()
 
     except Exception as e:
         st.error("Setup Error")
