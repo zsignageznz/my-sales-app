@@ -35,7 +35,6 @@ SHEET_URL = st.secrets["gsheet_url"] # Using your secret URL
 
 # ... rest of your code ...
 st.title("📦 Sales Recorder")
-
 try:
     df = load_data()
 
