@@ -74,7 +74,6 @@ try:
             st.subheader("4. Record Sale Details")
             col1, col2 = st.columns(2)
             
-            # This widget now accepts decimals because value and min_value are floats
             qty_sold = col1.number_input(
                 "Quantity Sold", 
                 min_value=0.01, 
@@ -99,19 +98,22 @@ try:
                 df.at[idx, 'Quantity (PC)'] = stock - qty_sold
                 conn.update(spreadsheet=SHEET_URL, worksheet="Inventory", data=df)
                 
-                # 2. Log to Sales Worksheet
+                # 2. Log to Sales Worksheet (REVISED TO MATCH YOUR SCREENSHOT)
                 try:
                     sales_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
+                    
+                    # We create a dictionary where keys match your EXACT Google Sheet headers
                     new_row = pd.DataFrame([{
-                        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "Item": selected_desc,
-                        "Color": selected_color,
-                        "Thickness": selected_thick,
-                        "Qty Sold": qty_sold,
-                        "Price Each": actual_price,
-                        "Total Amount": total_sale,
-                        "Stock Left": stock - qty_sold
+                        "Timestamp": datetime.now().strftime("%y-%m-%d %H:%M"),
+                        "Thickness": selected_thick,       # Column D
+                        "Qty Sold": qty_sold,              # Column E
+                        "Price Each": actual_price,        # Column F
+                        "Total Amount": total_sale,        # Column G
+                        "Item": selected_desc,             # Column I
+                        "Color": selected_color,           # Column L
+                        "Stock Left": stock - qty_sold     # Column N
                     }])
+                    
                     updated_sales = pd.concat([sales_df, new_row], ignore_index=True)
                     conn.update(spreadsheet=SHEET_URL, worksheet="Sales", data=updated_sales)
                     
@@ -119,14 +121,13 @@ try:
                     st.rerun()
                 except Exception as sales_err:
                     st.error(f"Inventory updated, but Sales log failed: {sales_err}")
-                    # --- SALES HISTORY SECTION ---
+
+        # --- SALES HISTORY SECTION ---
         st.divider()
         st.subheader("🕒 Recent Sales (Last 5)")
         try:
-            # Fetch the latest sales data
             history_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
             if not history_df.empty:
-                # Show the last 5 rows, most recent at the top
                 st.table(history_df.tail(5).iloc[::-1])
             else:
                 st.info("No sales recorded yet.")
