@@ -61,7 +61,7 @@ try:
         
         if not match.empty:
             row = match.iloc[0]
-            # Changed int to float to handle decimals like 0.5 or 0.25
+            # Convert to float to allow for fractional stock and prices
             stock = float(pd.to_numeric(str(row['Quantity (PC)']).replace(',', ''), errors='coerce') or 0.0)
             base_price = float(pd.to_numeric(str(row['TZS']).replace(',', ''), errors='coerce') or 0.0)
             
@@ -74,22 +74,21 @@ try:
             st.subheader("4. Record Sale Details")
             col1, col2 = st.columns(2)
             
-            # We force 'stock' to be a float right here to be safe
-            current_stock_val = float(stock)
-            
+            # This widget now accepts decimals because value and min_value are floats
             qty_sold = col1.number_input(
-                label="Quantity Sold",
-                min_value=0.10,            # Explicitly a float
-                max_value=current_stock_val, 
-                value=1.00,                # Explicitly a float
-                step=0.10,                 # Smaller step for easier 0.5/0.25 selection
-                format="%.2f"              # Forces 2 decimal display
+                "Quantity Sold", 
+                min_value=0.01, 
+                max_value=max(0.01, stock), 
+                value=1.0, 
+                step=0.25,
+                format="%.2f"
             )
-
-actual_price = col2.number_input("Actual Selling Price (per PC)", value=float(base_price), step=500.0)
             
-            # Fixed the price step to 500 TZS instead of 0.25
-            actual_price = col2.number_input("Actual Selling Price (per PC)", value=base_price, step=500.0)
+            actual_price = col2.number_input(
+                "Actual Selling Price (per PC)", 
+                value=base_price, 
+                step=500.0
+            )
             
             total_sale = qty_sold * actual_price
             st.info(f"💰 **Total Sale Amount: {total_sale:,.0f} TZS**")
