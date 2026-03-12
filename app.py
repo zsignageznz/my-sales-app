@@ -74,16 +74,19 @@ try:
             st.subheader("4. Record Sale Details")
             col1, col2 = st.columns(2)
             
-            # Fixed the variable name 'stock' and enabled decimal input
+            # We force 'stock' to be a float right here to be safe
+            current_stock_val = float(stock)
+            
             qty_sold = col1.number_input(
-                Quantity Sold", 
-                min_value=0.01,            # This allows numbers less than 1
-                max_value=float(stock),    # Ensures the limit is a decimal
-                value=1.0,                 # Setting this to 1.0 tells Streamlit to allow decimals
-                step=0.25,                 # The +/- buttons move by 0.25
-                format="%.2f"              # Displays 2 decimal places
+                label="Quantity Sold",
+                min_value=0.10,            # Explicitly a float
+                max_value=current_stock_val, 
+                value=1.00,                # Explicitly a float
+                step=0.10,                 # Smaller step for easier 0.5/0.25 selection
+                format="%.2f"              # Forces 2 decimal display
             )
-            )
+
+actual_price = col2.number_input("Actual Selling Price (per PC)", value=float(base_price), step=500.0)
             
             # Fixed the price step to 500 TZS instead of 0.25
             actual_price = col2.number_input("Actual Selling Price (per PC)", value=base_price, step=500.0)
