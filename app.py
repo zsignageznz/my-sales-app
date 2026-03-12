@@ -119,6 +119,19 @@ try:
                     st.rerun()
                 except Exception as sales_err:
                     st.error(f"Inventory updated, but Sales log failed: {sales_err}")
+                    # --- SALES HISTORY SECTION ---
+        st.divider()
+        st.subheader("🕒 Recent Sales (Last 5)")
+        try:
+            # Fetch the latest sales data
+            history_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
+            if not history_df.empty:
+                # Show the last 5 rows, most recent at the top
+                st.table(history_df.tail(5).iloc[::-1])
+            else:
+                st.info("No sales recorded yet.")
+        except:
+            st.info("Sales history will appear here once the first sale is logged.")
 
 except Exception as e:
     st.error(f"Setup Error: {e}")
