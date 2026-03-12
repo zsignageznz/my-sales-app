@@ -70,7 +70,7 @@ try:
 
             st.subheader("4. Record Sale Details")
             col1, col2 = st.columns(2)
-            qty_sold = col1.number_input("Quantity Sold", min_value=0.01, max_value=max(0.01, stock), value=1)
+            qty_sold = col1.number_input("Quantity Sold", min_value=0.01, max_value=max(0.01, current stock), value=1.0)
             actual_price = col2.number_input("Actual Selling Price (per PC)", value=base_price, step=0.25)
             
             total_sale = qty_sold * actual_price
