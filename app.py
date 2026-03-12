@@ -45,6 +45,7 @@ try:
     if df.empty or len(df) == 0:
         st.warning("📋 Your Inventory sheet is empty.")
     else:
+        # --- SELECTION AREA ---
         items = sorted(df['Description'].unique())
         selected_desc = st.selectbox("1. Select Item", items)
         
@@ -60,29 +61,42 @@ try:
         
         if not match.empty:
             row = match.iloc[0]
-            stock = int(pd.to_numeric(str(row['Quantity (PC)']).replace(',', ''), errors='coerce') or 0)
-            base_price = float(pd.to_numeric(str(row['TZS']).replace(',', ''), errors='coerce') or 0)
+            # Changed int to float to handle decimals like 0.5 or 0.25
+            stock = float(pd.to_numeric(str(row['Quantity (PC)']).replace(',', ''), errors='coerce') or 0.0)
+            base_price = float(pd.to_numeric(str(row['TZS']).replace(',', ''), errors='coerce') or 0.0)
             
             st.divider()
             col_a, col_b = st.columns(2)
             col_a.metric(label="In Stock", value=f"{stock} PC")
             col_b.metric(label="Base Price", value=f"{base_price:,.0f} TZS")
 
+            # --- TRANSACTION AREA ---
             st.subheader("4. Record Sale Details")
             col1, col2 = st.columns(2)
-            qty_sold = col1.number_input("Quantity Sold", min_value=0.01, max_value=max(0.01, current stock), value=1.0)
-            actual_price = col2.number_input("Actual Selling Price (per PC)", value=base_price, step=0.25)
+            
+            # Fixed the variable name 'stock' and enabled decimal input
+            qty_sold = col1.number_input(
+                "Quantity Sold", 
+                min_value=0.01, 
+                max_value=max(0.01, stock), 
+                value=1.0, 
+                step=0.25,
+                format="%.2f"
+            )
+            
+            # Fixed the price step to 500 TZS instead of 0.25
+            actual_price = col2.number_input("Actual Selling Price (per PC)", value=base_price, step=500.0)
             
             total_sale = qty_sold * actual_price
             st.info(f"💰 **Total Sale Amount: {total_sale:,.0f} TZS**")
             
             if st.button("Confirm Sale & Sync ✅", use_container_width=True):
-                # Update Inventory
+                # 1. Update Inventory Worksheet
                 idx = match.index[0]
                 df.at[idx, 'Quantity (PC)'] = stock - qty_sold
                 conn.update(spreadsheet=SHEET_URL, worksheet="Inventory", data=df)
                 
-                # Log to Sales
+                # 2. Log to Sales Worksheet
                 try:
                     sales_df = conn.read(spreadsheet=SHEET_URL, worksheet="Sales", ttl=0)
                     new_row = pd.DataFrame([{
@@ -97,7 +111,8 @@ try:
                     }])
                     updated_sales = pd.concat([sales_df, new_row], ignore_index=True)
                     conn.update(spreadsheet=SHEET_URL, worksheet="Sales", data=updated_sales)
-                    st.success("Success!")
+                    
+                    st.success("✅ Success! Inventory updated and sale logged.")
                     st.rerun()
                 except Exception as sales_err:
                     st.error(f"Inventory updated, but Sales log failed: {sales_err}")
