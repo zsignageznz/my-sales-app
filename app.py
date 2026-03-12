@@ -76,12 +76,13 @@ try:
             
             # Fixed the variable name 'stock' and enabled decimal input
             qty_sold = col1.number_input(
-                "Quantity Sold", 
-                min_value=0.01, 
-                max_value=max(0.01, stock), 
-                value=1.0, 
-                step=0.25,
-                format="%.2f"
+                Quantity Sold", 
+                min_value=0.01,            # This allows numbers less than 1
+                max_value=float(stock),    # Ensures the limit is a decimal
+                value=1.0,                 # Setting this to 1.0 tells Streamlit to allow decimals
+                step=0.25,                 # The +/- buttons move by 0.25
+                format="%.2f"              # Displays 2 decimal places
+            )
             )
             
             # Fixed the price step to 500 TZS instead of 0.25
